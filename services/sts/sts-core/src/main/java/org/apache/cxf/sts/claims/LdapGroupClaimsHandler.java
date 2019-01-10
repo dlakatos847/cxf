@@ -202,7 +202,33 @@ public class LdapGroupClaimsHandler implements ClaimsHandler, RealmSupport {
             user = st.nextToken();
         } else if (principal instanceof X500Principal) {
             X500Principal x500p = (X500Principal)principal;
-            LOG.warning("Unsupported principal type X500: " + x500p.getName());
+            String dn = x500p.getName(X500Principal.RFC2253);
+            StringTokenizer dnStringTokenizer = new StringTokenizer(dn, ",");
+            StringTokenizer cnStringTokenizer = null;
+            String commonName = null;
+            final String commonNameAttributePrefix = "CN=";
+
+            // find the common name attribute and its value (CN=xxx)
+            while (cnStringTokenizer == null && dnStringTokenizer.hasMoreTokens()) {
+              String dnToken = dnStringTokenizer.nextToken();
+              if (dnToken.startsWith(commonNameAttributePrefix)
+                  || dnToken.startsWith(commonNameAttributePrefix.toLowerCase())) {
+                cnStringTokenizer = new StringTokenizer(dnToken, "=");
+              }
+            }
+
+            // extract the common name attribute's value
+            while(cnStringTokenizer.hasMoreTokens()) {
+              String cnToken = cnStringTokenizer.nextToken();
+
+              // last token is the value
+              if(!cnStringTokenizer.hasMoreTokens()) {
+                commonName = cnToken;
+              }
+            }
+
+            LOG.fine("X500 common name: " + commonName);
+            user = commonName;
         } else if (principal != null) {
             user = principal.getName();
             if (user == null) {
